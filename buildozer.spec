@@ -29,14 +29,14 @@ android.theme = Theme.Transparent
 android.accept_sdk_license = True
 
 # Foreground service
-services = overlay_service:services/overlay_service.py:foreground:sticky:foregroundServiceType=specialUse
+services = overlay_service:services/overlay_service.py:foreground:sticky:foregroundServiceType=dataSync
 
 # Display
 fullscreen = 0
 orientation = portrait
 
 # Build
-android.arch = arm64-v8a
+android.archs = arm64-v8a
 
 [buildozer]
 log_level = 2

@@ -1,0 +1,28 @@
+--- a/Python/remote_debug.h
++++ b/Python/remote_debug.h
+@@ -957,7 +957,12 @@
+         local[0].iov_base = (char*)dst + result;
+         local[0].iov_len = len - result;
+         off_t offset = remote_address + result;
+-
++#if defined(__ANDROID__) && __ANDROID_API__ < 33
++        // Android NDK < 33 does not declare preadv; use pread for single iovec
++        read_bytes = pread(handle->memfd, local[0].iov_base, local[0].iov_len, offset);
++#else
+         read_bytes = preadv(handle->memfd, local, 1, offset);
++#endif
+         if (read_bytes < 0) {
+--- a/Python/remote_debugging.c
++++ b/Python/remote_debugging.c
+@@ -45,7 +45,12 @@
+         local[0].iov_base = (char*)src + result;
+         local[0].iov_len = len - result;
+         off_t offset = remote_address + result;
+-
++#if defined(__ANDROID__) && __ANDROID_API__ < 33
++        // Android NDK < 33 does not declare pwritev; use pwrite for single iovec
++        written = pwrite(handle->memfd, local[0].iov_base, local[0].iov_len, offset);
++#else
+         written = pwritev(handle->memfd, local, 1, offset);
++#endif
+         if (written < 0) {
