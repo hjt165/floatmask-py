@@ -1,0 +1,29 @@
+# Buildozer build artifacts
+.buildozer/
+bin/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Kivy
+*.kv~
+
+# Local config
+local.properties
