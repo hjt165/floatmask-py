@@ -1,11 +1,10 @@
 # FloatMask 主界面
-# Kivy App + ScreenManager
+# 使用系统级 WindowManager 悬浮窗
 # 对应原 Java 项目 com.floatmask.activities.MainActivity.java
 
 import sys
 import os
 
-# 确保项目根目录在 Python 路径中
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from kivy.app import App
@@ -25,23 +24,24 @@ FONT_NAME = 'Chinese'
 if os.path.exists(FONT_PATH):
     LabelBase.register(name=FONT_NAME, fn_regular=FONT_PATH)
 
+from kivy.lang import Builder
+Builder.load_string(f'''
+<SpinnerOption>:
+    font_name: '{FONT_NAME}'
+''')
+
 import constants
 import preferences
 import permissions
-from overlay import FloatingOverlay
-from gesture_handler import GestureHandler
-from edge_snap import EdgeSnapHelper
+from native_overlay import NativeOverlay
 
 
 class MainScreen(Screen):
-    """主控制界面"""
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
 
-        # 标题
         title = Label(
             text="智能字幕遮挡",
             font_size=24,
@@ -50,7 +50,6 @@ class MainScreen(Screen):
         )
         self.layout.add_widget(title)
 
-        # 悬浮窗开关
         switch_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
         switch_layout.add_widget(Label(text="悬浮窗开关", font_name=FONT_NAME, size_hint_x=0.6))
         self.toggle_switch = Switch(active=False, size_hint_x=0.4)
@@ -58,7 +57,6 @@ class MainScreen(Screen):
         switch_layout.add_widget(self.toggle_switch)
         self.layout.add_widget(switch_layout)
 
-        # 边缘吸附开关
         snap_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
         snap_layout.add_widget(Label(text="边缘吸附", font_name=FONT_NAME, size_hint_x=0.6))
         self.snap_switch = Switch(active=True, size_hint_x=0.4)
@@ -66,7 +64,6 @@ class MainScreen(Screen):
         snap_layout.add_widget(self.snap_switch)
         self.layout.add_widget(snap_layout)
 
-        # 颜色选择
         color_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
         color_layout.add_widget(Label(text="遮挡颜色", font_name=FONT_NAME, size_hint_x=0.6))
         self.color_spinner = Spinner(
@@ -79,7 +76,6 @@ class MainScreen(Screen):
         color_layout.add_widget(self.color_spinner)
         self.layout.add_widget(color_layout)
 
-        # 权限按钮
         self.perm_btn = Button(
             text="授予悬浮窗权限",
             font_name=FONT_NAME,
@@ -88,7 +84,6 @@ class MainScreen(Screen):
         self.perm_btn.bind(on_press=self.on_request_permission)
         self.layout.add_widget(self.perm_btn)
 
-        # 自启动按钮
         self.autostart_btn = Button(
             text="开启自启动",
             font_name=FONT_NAME,
@@ -97,7 +92,6 @@ class MainScreen(Screen):
         self.autostart_btn.bind(on_press=self.on_autostart)
         self.layout.add_widget(self.autostart_btn)
 
-        # 电池优化按钮
         self.battery_btn = Button(
             text="忽略电池优化",
             font_name=FONT_NAME,
@@ -106,7 +100,6 @@ class MainScreen(Screen):
         self.battery_btn.bind(on_press=self.on_battery_opt)
         self.layout.add_widget(self.battery_btn)
 
-        # 状态标签
         self.status_label = Label(
             text="状态：未启动",
             font_size=14,
@@ -117,16 +110,14 @@ class MainScreen(Screen):
 
         self.add_widget(self.layout)
 
-        # Overlay 和手势处理器
-        self.overlay = None
-        self.gesture_handler = None
-        self.edge_snap = None
+        self.native_overlay = None
+        self._color_index = 0
+        self._snap_enabled = True
+        self._snap_event = None
 
-        # 启动时检查权限
         Clock.schedule_once(self._check_permissions, 0.5)
 
     def _check_permissions(self, dt):
-        """启动时检查权限状态"""
         if platform == 'android':
             if permissions.has_overlay_permission():
                 self.status_label.text = "状态：已授予悬浮窗权限"
@@ -135,15 +126,13 @@ class MainScreen(Screen):
                 self.status_label.text = "状态：需要授予悬浮窗权限"
 
     def on_toggle(self, instance, value):
-        """悬浮窗开关"""
         if value:
             self._start_overlay()
         else:
             self._stop_overlay()
 
     def _start_overlay(self):
-        """启动悬浮窗"""
-        if self.overlay is not None:
+        if self.native_overlay is not None:
             return
 
         if platform == 'android' and not permissions.has_overlay_permission():
@@ -151,139 +140,130 @@ class MainScreen(Screen):
             self.toggle_switch.active = False
             return
 
-        # 创建悬浮窗
-        self.overlay = FloatingOverlay()
-        Window.add_widget(self.overlay)
+        self.native_overlay = NativeOverlay()
 
-        # 创建手势处理器
-        self.gesture_handler = GestureHandler(
-            self.overlay,
-            on_color_change=self._on_color_changed,
-            on_alpha_change=self._on_alpha_changed,
-            on_size_change=self._on_size_changed,
-            on_double_tap=self._on_double_tap
-        )
-
-        # 创建边缘吸附
-        self.edge_snap = EdgeSnapHelper(
-            self.overlay,
-            enabled=self.snap_switch.active
-        )
-
-        # 加载保存的状态
+        x, y, w, h = 100, 100, constants.DEFAULT_FLOATING_WIDTH, constants.DEFAULT_FLOATING_HEIGHT
         if preferences.has_saved_state():
             state = preferences.load_state()
-            self.overlay.set_position(state['x'], state['y'])
-            self.overlay.set_size(state['width'], state['height'])
-            self.overlay.set_alpha(state['alpha'])
-            # 设置颜色
+            x, y = state['x'], state['y']
+            w, h = state['width'], state['height']
+            self._color_index = 0
             for i, c in enumerate(constants.COLORS):
                 if c == state['color']:
-                    self.gesture_handler.set_color_index(i)
-                    self.overlay.set_color(c)
+                    self._color_index = i
                     break
 
-        # 绑定触摸事件
-        Window.bind(on_touch_down=self._on_touch_down)
-        Window.bind(on_touch_move=self._on_touch_move)
-        Window.bind(on_touch_up=self._on_touch_up)
+        color = constants.COLORS[self._color_index]
+        self.native_overlay.show(x, y, w, h, color)
+
+        self.native_overlay.start_polling(
+            on_color_change=self._on_native_color_change,
+            on_double_tap=self._on_native_double_tap
+        )
 
         self.status_label.text = "状态：悬浮窗已启动"
         preferences.save_service_enabled(True)
 
+        if self._snap_enabled:
+            self._start_snap_polling()
+
     def _stop_overlay(self):
-        """停止悬浮窗"""
-        if self.overlay is None:
+        if self.native_overlay is None:
             return
 
-        # 保存状态
-        x, y = self.overlay.get_position()
-        w, h = self.overlay.get_size()
-        color_idx = self.gesture_handler._color_index
-        preferences.save_all_state(
-            x, y, w, h,
-            constants.COLORS[color_idx],
-            self.overlay.floating_alpha
-        )
+        x, y = self.native_overlay.get_position()
+        w, h = self.native_overlay.get_size()
+        color = constants.COLORS[self._color_index]
+        preferences.save_all_state(x, y, w, h, color, 1.0)
 
-        # 移除悬浮窗
-        Window.remove_widget(self.overlay)
-        self.overlay = None
-        self.gesture_handler = None
-        self.edge_snap = None
+        self.native_overlay.stop_polling()
+        self.native_overlay.hide()
+        self.native_overlay = None
 
-        Window.unbind(on_touch_down=self._on_touch_down)
-        Window.unbind(on_touch_move=self._on_touch_move)
-        Window.unbind(on_touch_up=self._on_touch_up)
-
+        self._stop_snap_polling()
         self.status_label.text = "状态：已停止"
         preferences.save_service_enabled(False)
 
-    def _on_touch_down(self, window, touch):
-        if self.gesture_handler:
-            return self.gesture_handler.on_touch_down(touch)
+    def _on_native_color_change(self, color_index):
+        self._color_index = color_index
+        self.native_overlay.set_color(constants.COLORS[color_index])
 
-    def _on_touch_move(self, window, touch):
-        if self.gesture_handler:
-            return self.gesture_handler.on_touch_move(touch)
-
-    def _on_touch_up(self, window, touch):
-        if self.gesture_handler:
-            result = self.gesture_handler.on_touch_up(touch)
-            # 松手后触发边缘吸附
-            if self.edge_snap and self.gesture_handler._gesture_state is None:
-                self.edge_snap.snap_to_edge()
-            return result
-
-    def _on_color_changed(self, color_index):
-        """颜色变化回调"""
-        if self.overlay:
-            self.overlay.set_color(constants.COLORS[color_index])
-
-    def _on_alpha_changed(self, alpha):
-        """透明度变化回调"""
-        if self.overlay:
-            self.overlay.set_alpha(alpha)
-
-    def _on_size_changed(self, width, height):
-        """尺寸变化回调"""
-        pass
-
-    def _on_double_tap(self):
-        """双击回调"""
+    def _on_native_double_tap(self):
         pass
 
     def on_color_change(self, spinner, text):
-        """颜色选择"""
         color_map = {
             '灰色半透明': constants.COLOR_TRANSPARENT_GRAY,
             '黑色半透明': constants.COLOR_TRANSPARENT_BLACK,
             '纯黑': constants.COLOR_SOLID_BLACK,
         }
         color = color_map.get(text, constants.COLOR_TRANSPARENT_GRAY)
-        if self.overlay:
+        if self.native_overlay:
             idx = constants.COLORS.index(color) if color in constants.COLORS else 0
-            self.gesture_handler.set_color_index(idx)
-            self.overlay.set_color(color)
+            self._color_index = idx
+            self.native_overlay.set_color(color)
         preferences.save_default_color(color)
 
     def on_snap_toggle(self, instance, value):
-        """边缘吸附开关"""
-        if self.edge_snap:
-            self.edge_snap.set_enabled(value)
+        self._snap_enabled = value
         preferences.save_edge_snap_enabled(value)
+        if value and self.native_overlay:
+            self._start_snap_polling()
+        else:
+            self._stop_snap_polling()
+
+    def _start_snap_polling(self):
+        self._stop_snap_polling()
+        self._snap_event = Clock.schedule_interval(self._do_snap_poll, 1.0 / 30)
+
+    def _stop_snap_polling(self):
+        if self._snap_event:
+            self._snap_event.cancel()
+            self._snap_event = None
+
+    def _do_snap_poll(self, dt):
+        if self.native_overlay is None:
+            return
+
+        from jnius import autoclass
+        OverlayView = autoclass('com.floatmask.OverlayView')
+        action = OverlayView.touchAction
+
+        if action == 2 or action == 4:
+            OverlayView.touchAction = -1
+            self._do_snap()
+
+    def _do_snap(self):
+        if self.native_overlay is None:
+            return
+
+        x, y = self.native_overlay.get_position()
+        w, h = self.native_overlay.get_size()
+        sw, sh = Window.width, Window.height
+        threshold = constants.EDGE_SNAP_THRESHOLD
+
+        target_x, target_y = x, y
+        if x < threshold:
+            target_x = constants.EDGE_SNAP_MARGIN
+        elif x + w > sw - threshold:
+            target_x = sw - w - constants.EDGE_SNAP_MARGIN
+        if y + h > sh - threshold:
+            target_y = sh - h - constants.EDGE_SNAP_MARGIN
+        elif y < threshold:
+            target_y = constants.EDGE_SNAP_MARGIN
+
+        if target_x != x or target_y != y:
+            self.native_overlay.set_position(target_x, target_y)
+
 
     def on_request_permission(self, instance):
-        """请求悬浮窗权限"""
         permissions.request_overlay_permission()
 
     def on_autostart(self, instance):
-        """打开自启动设置"""
         import keep_alive
         keep_alive.open_vendor_autostart()
 
     def on_battery_opt(self, instance):
-        """请求忽略电池优化"""
         import keep_alive
         keep_alive.open_battery_optimization()
 

@@ -9,7 +9,7 @@ package.domain = com.floatmask
 
 # Source
 source.dir = .
-source.include_exts = py,png,jpg,kv,xml,ttf
+source.include_exts = py,png,jpg,kv,xml,ttf,java
 
 # Version
 version = 1.0
@@ -37,6 +37,7 @@ orientation = portrait
 
 # Build
 android.archs = arm64-v8a
+android.add_src = src
 
 [buildozer]
 log_level = 2
