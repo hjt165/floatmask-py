@@ -7,6 +7,13 @@ from kivy.clock import Clock
 import constants
 
 
+def _to_signed32(val):
+    val = val & 0xFFFFFFFF
+    if val >= 0x80000000:
+        val -= 0x100000000
+    return val
+
+
 class NativeOverlay:
     """原生悬浮窗包装器，通过 Pyjnius 调用 OverlayView.java"""
 
@@ -40,7 +47,7 @@ class NativeOverlay:
         if h is None:
             h = constants.DEFAULT_FLOATING_HEIGHT
         if color is not None:
-            self._view.setColor(color)
+            self._view.setColor(_to_signed32(color))
 
         self._view.show(int(x), int(y), int(w), int(h))
         return True
@@ -55,9 +62,8 @@ class NativeOverlay:
             self._poll_event = None
 
     def set_color(self, argb_hex):
-        """设置颜色"""
         if self._view is not None:
-            self._view.setColor(int(argb_hex))
+            self._view.setColor(_to_signed32(argb_hex))
 
     def set_position(self, x, y):
         """设置位置"""
