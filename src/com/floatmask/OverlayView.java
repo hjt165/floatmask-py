@@ -125,6 +125,8 @@ public class OverlayView extends View {
         final WindowManager.LayoutParams p = params;
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             wm.addView(this, p);
+            requestLayout();
+            android.util.Log.e("FloatMask", "addView done, requested layout");
         });
     }
 
