@@ -62,6 +62,7 @@ class MainScreen(Screen):
         snap_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
         snap_layout.add_widget(Label(text="边缘吸附", font_name=FONT_NAME, size_hint_x=0.6))
         self.snap_switch = Switch(active=True, size_hint_x=0.4)
+        self.snap_switch.bind(active=self.on_snap_toggle)
         snap_layout.add_widget(self.snap_switch)
         self.layout.add_widget(snap_layout)
 
@@ -266,6 +267,12 @@ class MainScreen(Screen):
             self.overlay.set_color(color)
         preferences.save_default_color(color)
 
+    def on_snap_toggle(self, instance, value):
+        """边缘吸附开关"""
+        if self.edge_snap:
+            self.edge_snap.set_enabled(value)
+        preferences.save_edge_snap_enabled(value)
+
     def on_request_permission(self, instance):
         """请求悬浮窗权限"""
         permissions.request_overlay_permission()
@@ -292,7 +299,6 @@ class FloatMaskApp(App):
         return True
 
     def on_stop(self):
-        # 保存状态
         pass
 
 
