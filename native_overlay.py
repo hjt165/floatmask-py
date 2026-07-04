@@ -28,51 +28,56 @@ class NativeOverlay:
         self._last_touch_action = -1
 
     def show(self, x=100, y=100, w=None, h=None, color=None):
-        """显示悬浮窗"""
+        """显示悬浮窗（通过 Clock.schedule_once 确保在主线程执行）"""
         if platform != 'android':
-            print("[NativeOverlay] Not on Android, skipping")
             return False
 
+        if w is None:
+            w = constants.DEFAULT_FLOATING_WIDTH
+        if h is None:
+            h = constants.DEFAULT_FLOATING_HEIGHT
+
+        self._show_params = (x, y, w, h, color)
+        Clock.schedule_once(self._do_show, 0)
+        return True
+
+    def _do_show(self, dt):
         try:
             from jnius import autoclass
 
-            print("[NativeOverlay] Getting PythonActivity...")
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
             activity = PythonActivity.mActivity
-            print(f"[NativeOverlay] Activity: {activity}")
-
-            print("[NativeOverlay] Getting OverlayView class...")
             OverlayViewClass = autoclass('com.floatmask.OverlayView')
-            print(f"[NativeOverlay] OverlayView class: {OverlayViewClass}")
 
-            print("[NativeOverlay] Creating OverlayView...")
+            x, y, w, h, color = self._show_params
             self._view = OverlayViewClass(activity)
-            print(f"[NativeOverlay] View created: {self._view}")
-
-            if w is None:
-                w = constants.DEFAULT_FLOATING_WIDTH
-            if h is None:
-                h = constants.DEFAULT_FLOATING_HEIGHT
             if color is not None:
-                signed_color = _to_signed32(color)
-                print(f"[NativeOverlay] Setting color: 0x{color:08X} -> {signed_color}")
-                self._view.setColor(signed_color)
-
-            print(f"[NativeOverlay] Calling show({x}, {y}, {w}, {h})...")
+                self._view.setColor(_to_signed32(color))
             self._view.show(int(x), int(y), int(w), int(h))
-            print("[NativeOverlay] show() completed successfully!")
-            return True
         except Exception as e:
-            print(f"[NativeOverlay] ERROR: {e}")
+            print(f"[NativeOverlay] ERROR in _do_show: {e}")
             import traceback
             traceback.print_exc()
-            return False
 
     def hide(self):
         """隐藏悬浮窗"""
         if self._view is not None:
-            self._view.hide()
-            self._view = None
+            try:
+                from jnius import autoclass
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                activity = PythonActivity.mActivity
+                Handler = autoclass('android.os.Handler')
+                Looper = autoclass('android.os.Looper')
+                handler = Handler(Looper.getMainLooper())
+                view = self._view
+                self._view = None
+                handler.post(lambda: view.hide())
+            except:
+                try:
+                    self._view.hide()
+                except:
+                    pass
+                self._view = None
         if self._poll_event is not None:
             self._poll_event.cancel()
             self._poll_event = None
@@ -82,34 +87,28 @@ class NativeOverlay:
             self._view.setColor(_to_signed32(argb_hex))
 
     def set_position(self, x, y):
-        """设置位置"""
         if self._view is not None:
             self._view.moveTo(float(x), float(y))
 
     def set_size(self, w, h):
-        """设置尺寸"""
         if self._view is not None:
             self._view.resizeTo(int(w), int(h))
 
     def set_alpha(self, alpha):
-        """设置透明度"""
         if self._view is not None:
             self._view.setOverlayAlpha(float(alpha))
 
     def get_position(self):
-        """获取位置"""
         if self._view is None:
             return 0, 0
         return self._view.getPosX(), self._view.getPosY()
 
     def get_size(self):
-        """获取尺寸"""
         if self._view is None:
             return 0, 0
         return self._view.getOverlayWidth(), self._view.getOverlayHeight()
 
     def start_polling(self, on_color_change=None, on_alpha_change=None, on_double_tap=None):
-        """开始轮询 Java 端的触摸事件"""
         self._on_color_change = on_color_change
         self._on_alpha_change = on_alpha_change
         self._on_double_tap = on_double_tap
@@ -117,13 +116,11 @@ class NativeOverlay:
         self._poll_event = Clock.schedule_interval(self._poll_touch, 1.0 / 30)
 
     def stop_polling(self):
-        """停止轮询"""
         if self._poll_event is not None:
             self._poll_event.cancel()
             self._poll_event = None
 
     def _poll_touch(self, dt):
-        """轮询 Java 端的触摸状态"""
         if self._view is None:
             return
 
@@ -136,20 +133,11 @@ class NativeOverlay:
 
         self._last_touch_action = action
 
-        if action == 0:  # ACTION_DOWN
-            pass  # handled in Java
-
-        elif action == 1:  # ACTION_MOVE
-            # Java handles drag/resize directly
-            pass
-
-        elif action == 2:  # ACTION_UP
-            # Check if it was a double-tap
-            OverlayView.touchAction = -1  # reset
+        if action == 2:
+            OverlayView.touchAction = -1
             self._last_touch_action = -1
 
-        elif action == 3:  # DOUBLE_TAP
-            # Toggle color
+        elif action == 3:
             self._color_index = (self._color_index + 1) % len(constants.COLORS)
             if self._on_color_change:
                 self._on_color_change(self._color_index)
