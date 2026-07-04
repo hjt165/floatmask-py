@@ -70,7 +70,7 @@ def load_state():
         'y': prefs.getInt(constants.PREF_KEY_Y, constants.DEFAULT_FLOATING_HEIGHT // 2),
         'width': prefs.getInt(constants.PREF_KEY_WIDTH, constants.DEFAULT_FLOATING_WIDTH),
         'height': prefs.getInt(constants.PREF_KEY_HEIGHT, constants.DEFAULT_FLOATING_HEIGHT),
-        'color': _from_signed32(prefs.getInt(constants.PREF_KEY_COLOR, constants.COLOR_TRANSPARENT_GRAY)),
+        'color': _from_signed32(prefs.getInt(constants.PREF_KEY_COLOR, _to_signed32(constants.COLOR_TRANSPARENT_GRAY))),
         'alpha': prefs.getFloat(constants.PREF_KEY_ALPHA, 1.0),
     }
 
@@ -112,7 +112,7 @@ def get_default_color():
     prefs = _get_prefs()
     if prefs is None:
         return constants.COLOR_TRANSPARENT_GRAY
-    return _from_signed32(prefs.getInt(constants.PREF_KEY_DEFAULT_COLOR, constants.COLOR_TRANSPARENT_GRAY))
+    return _from_signed32(prefs.getInt(constants.PREF_KEY_DEFAULT_COLOR, _to_signed32(constants.COLOR_TRANSPARENT_GRAY)))
 
 
 def save_default_alpha(alpha):
