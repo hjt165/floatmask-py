@@ -120,9 +120,15 @@ class MainScreen(Screen):
 
     def _auto_start_check(self, dt):
         if platform == 'android':
-            import os
-            if os.environ.get('FLOATMASK_AUTOSTART', '') == '1':
-                self.toggle_switch.active = True
+            try:
+                from jnius import autoclass
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                intent = PythonActivity.mActivity.getIntent()
+                autostart = intent.getStringExtra('FLOATMASK_AUTOSTART')
+                if autostart == '1':
+                    self.toggle_switch.active = True
+            except Exception:
+                pass
 
     def _check_permissions(self, dt):
         if platform == 'android':
