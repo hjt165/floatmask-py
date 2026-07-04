@@ -16,8 +16,15 @@ from kivy.uix.label import Label
 from kivy.uix.switch import Switch
 from kivy.uix.spinner import Spinner
 from kivy.core.window import Window
+from kivy.core.text import LabelBase
 from kivy.utils import platform
 from kivy.clock import Clock
+
+FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'simhei.ttf')
+if os.path.exists(FONT_PATH):
+    LabelBase.register(name='Chinese', fn_regular=FONT_PATH)
+    from kivy.config import Config
+    Config.set('Label', 'font_name', 'Chinese')
 
 import constants
 import preferences
