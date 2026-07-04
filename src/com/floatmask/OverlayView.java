@@ -74,7 +74,7 @@ public class OverlayView extends View {
         iconPaint.setStyle(Paint.Style.STROKE);
         iconPaint.setStrokeWidth(3f);
         iconPaint.setStrokeCap(Paint.Cap.ROUND);
-        iconPaint.setStrokeJoin(Paint.Cap.ROUND);
+        iconPaint.setStrokeJoin(Paint.Join.ROUND);
 
         textPaint = new Paint();
         textPaint.setAntiAlias(true);
