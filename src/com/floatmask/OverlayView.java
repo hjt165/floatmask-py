@@ -277,6 +277,8 @@ public class OverlayView extends View {
                 isDragHandle = false;
                 toolbarButtonTapped = false;
 
+                android.util.Log.i("FloatMask", "ACTION_DOWN rawX=" + rawX + " rawY=" + rawY + " localX=" + localX + " localY=" + localY + " posX=" + posX + " posY=" + posY + " toolbarH=" + TOOLBAR_HEIGHT + " viewW=" + viewWidth);
+
                 // Check toolbar buttons
                 if (isInLockArea(localX, localY)) {
                     isLocked = !isLocked;
@@ -284,6 +286,7 @@ public class OverlayView extends View {
                     touchAction = 5; // lock toggle
                     dragging = false;
                     toolbarButtonTapped = true;
+                    android.util.Log.i("FloatMask", "LOCK TOGGLE: isLocked=" + isLocked);
                     return true;
                 }
 
@@ -291,6 +294,7 @@ public class OverlayView extends View {
                     touchAction = 6; // close
                     dragging = false;
                     toolbarButtonTapped = true;
+                    android.util.Log.i("FloatMask", "CLOSE BUTTON TAPPED");
                     return true;
                 }
 

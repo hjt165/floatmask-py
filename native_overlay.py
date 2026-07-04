@@ -151,6 +151,9 @@ class NativeOverlay:
 
         self._last_touch_action = action
 
+        Log = autoclass('android.util.Log')
+        Log.i("FloatMask", f"Poll touch: action={action}")
+
         if action == 2:
             OverlayView.touchAction = -1
             self._last_touch_action = -1
