@@ -321,13 +321,17 @@ public class OverlayView extends View {
                     float totalDX = rawX - touchStartX;
                     float distFromStart = (float) Math.sqrt(totalDX * totalDX + totalDY * totalDY);
 
-                    if (!isSlide && !inResizeArea && distFromStart > 30
+                    if (!isSlide && !isDragHandle && !inResizeArea && distFromStart > 30
                         && Math.abs(totalDY) > Math.abs(totalDX) * 2
                         && Math.abs(totalDY) > 30) {
                         isSlide = true;
                     }
 
-                    if (isSlide) {
+                    if (isDragHandle) {
+                        float newX = posX + touchDX;
+                        float newY = posY + touchDY;
+                        moveTo(newX, newY);
+                    } else if (isSlide) {
                         float newAlpha = slideStartAlpha - totalDY / (screenHeight * 0.5f);
                         newAlpha = Math.max(0.1f, Math.min(1.0f, newAlpha));
                         applyAlphaToColor(newAlpha);
