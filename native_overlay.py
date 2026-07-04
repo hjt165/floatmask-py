@@ -123,10 +123,13 @@ class NativeOverlay:
             return 0, 0
         return self._view.getOverlayWidth(), self._view.getOverlayHeight()
 
-    def start_polling(self, on_color_change=None, on_alpha_change=None, on_double_tap=None):
+    def start_polling(self, on_color_change=None, on_alpha_change=None,
+                      on_double_tap=None, on_lock_change=None, on_close=None):
         self._on_color_change = on_color_change
         self._on_alpha_change = on_alpha_change
         self._on_double_tap = on_double_tap
+        self._on_lock_change = on_lock_change
+        self._on_close = on_close
         self._last_touch_action = -1
         self._poll_event = Clock.schedule_interval(self._poll_touch, 1.0 / 30)
 
@@ -160,3 +163,17 @@ class NativeOverlay:
                 self._on_double_tap()
             OverlayView.touchAction = -1
             self._last_touch_action = -1
+
+        elif action == 5:
+            # Lock toggle from toolbar button
+            OverlayView.touchAction = -1
+            self._last_touch_action = -1
+            if self._on_lock_change:
+                self._on_lock_change()
+
+        elif action == 6:
+            # Close from toolbar button
+            OverlayView.touchAction = -1
+            self._last_touch_action = -1
+            if self._on_close:
+                self._on_close()

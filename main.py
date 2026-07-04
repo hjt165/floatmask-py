@@ -158,7 +158,9 @@ class MainScreen(Screen):
 
         self.native_overlay.start_polling(
             on_color_change=self._on_native_color_change,
-            on_double_tap=self._on_native_double_tap
+            on_double_tap=self._on_native_double_tap,
+            on_lock_change=self._on_lock_change,
+            on_close=self._on_close
         )
 
         self.status_label.text = "状态：悬浮窗已启动"
@@ -190,6 +192,12 @@ class MainScreen(Screen):
 
     def _on_native_double_tap(self):
         pass
+
+    def _on_lock_change(self):
+        pass
+
+    def _on_close(self):
+        self.toggle_switch.active = False
 
     def on_color_change(self, spinner, text):
         color_map = {
@@ -232,6 +240,8 @@ class MainScreen(Screen):
         if action == 2 or action == 4:
             OverlayView.touchAction = -1
             self._do_snap()
+        elif action == 5 or action == 6:
+            OverlayView.touchAction = -1
 
     def _do_snap(self):
         if self.native_overlay is None:
