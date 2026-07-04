@@ -9,7 +9,7 @@ package.domain = com.floatmask
 
 # Source
 source.dir = .
-source.include_exts = py,png,jpg,kv,xml
+source.include_exts = py,png,jpg,kv,xml,ttf
 
 # Version
 version = 1.0
