@@ -261,6 +261,7 @@ public class OverlayView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        android.util.Log.e("FloatMask", "onTouchEvent action=" + event.getAction());
         float rawX = event.getRawX();
         float rawY = event.getRawY();
         float localX = rawX - posX;
