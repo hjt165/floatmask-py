@@ -21,10 +21,9 @@ from kivy.utils import platform
 from kivy.clock import Clock
 
 FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'simhei.ttf')
+FONT_NAME = 'Chinese'
 if os.path.exists(FONT_PATH):
-    LabelBase.register(name='Chinese', fn_regular=FONT_PATH)
-    from kivy.config import Config
-    Config.set('Label', 'font_name', 'Chinese')
+    LabelBase.register(name=FONT_NAME, fn_regular=FONT_PATH)
 
 import constants
 import preferences
@@ -46,13 +45,14 @@ class MainScreen(Screen):
         title = Label(
             text="智能字幕遮挡",
             font_size=24,
+            font_name=FONT_NAME,
             size_hint_y=0.1
         )
         self.layout.add_widget(title)
 
         # 悬浮窗开关
         switch_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
-        switch_layout.add_widget(Label(text="悬浮窗开关", size_hint_x=0.6))
+        switch_layout.add_widget(Label(text="悬浮窗开关", font_name=FONT_NAME, size_hint_x=0.6))
         self.toggle_switch = Switch(active=False, size_hint_x=0.4)
         self.toggle_switch.bind(active=self.on_toggle)
         switch_layout.add_widget(self.toggle_switch)
@@ -60,17 +60,18 @@ class MainScreen(Screen):
 
         # 边缘吸附开关
         snap_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
-        snap_layout.add_widget(Label(text="边缘吸附", size_hint_x=0.6))
+        snap_layout.add_widget(Label(text="边缘吸附", font_name=FONT_NAME, size_hint_x=0.6))
         self.snap_switch = Switch(active=True, size_hint_x=0.4)
         snap_layout.add_widget(self.snap_switch)
         self.layout.add_widget(snap_layout)
 
         # 颜色选择
         color_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
-        color_layout.add_widget(Label(text="遮挡颜色", size_hint_x=0.6))
+        color_layout.add_widget(Label(text="遮挡颜色", font_name=FONT_NAME, size_hint_x=0.6))
         self.color_spinner = Spinner(
             text='灰色半透明',
             values=('灰色半透明', '黑色半透明', '纯黑'),
+            font_name=FONT_NAME,
             size_hint_x=0.4
         )
         self.color_spinner.bind(text=self.on_color_change)
@@ -80,6 +81,7 @@ class MainScreen(Screen):
         # 权限按钮
         self.perm_btn = Button(
             text="授予悬浮窗权限",
+            font_name=FONT_NAME,
             size_hint_y=0.1
         )
         self.perm_btn.bind(on_press=self.on_request_permission)
@@ -88,6 +90,7 @@ class MainScreen(Screen):
         # 自启动按钮
         self.autostart_btn = Button(
             text="开启自启动",
+            font_name=FONT_NAME,
             size_hint_y=0.1
         )
         self.autostart_btn.bind(on_press=self.on_autostart)
@@ -96,6 +99,7 @@ class MainScreen(Screen):
         # 电池优化按钮
         self.battery_btn = Button(
             text="忽略电池优化",
+            font_name=FONT_NAME,
             size_hint_y=0.1
         )
         self.battery_btn.bind(on_press=self.on_battery_opt)
@@ -105,6 +109,7 @@ class MainScreen(Screen):
         self.status_label = Label(
             text="状态：未启动",
             font_size=14,
+            font_name=FONT_NAME,
             size_hint_y=0.1
         )
         self.layout.add_widget(self.status_label)
