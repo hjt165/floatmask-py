@@ -33,24 +33,40 @@ class NativeOverlay:
             print("[NativeOverlay] Not on Android, skipping")
             return False
 
-        from jnius import autoclass
+        try:
+            from jnius import autoclass
 
-        Context = autoclass('android.content.Context')
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        activity = PythonActivity.mActivity
-        OverlayView = autoclass('com.floatmask.OverlayView')
+            print("[NativeOverlay] Getting PythonActivity...")
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            activity = PythonActivity.mActivity
+            print(f"[NativeOverlay] Activity: {activity}")
 
-        self._view = OverlayView(activity)
+            print("[NativeOverlay] Getting OverlayView class...")
+            OverlayViewClass = autoclass('com.floatmask.OverlayView')
+            print(f"[NativeOverlay] OverlayView class: {OverlayViewClass}")
 
-        if w is None:
-            w = constants.DEFAULT_FLOATING_WIDTH
-        if h is None:
-            h = constants.DEFAULT_FLOATING_HEIGHT
-        if color is not None:
-            self._view.setColor(_to_signed32(color))
+            print("[NativeOverlay] Creating OverlayView...")
+            self._view = OverlayViewClass(activity)
+            print(f"[NativeOverlay] View created: {self._view}")
 
-        self._view.show(int(x), int(y), int(w), int(h))
-        return True
+            if w is None:
+                w = constants.DEFAULT_FLOATING_WIDTH
+            if h is None:
+                h = constants.DEFAULT_FLOATING_HEIGHT
+            if color is not None:
+                signed_color = _to_signed32(color)
+                print(f"[NativeOverlay] Setting color: 0x{color:08X} -> {signed_color}")
+                self._view.setColor(signed_color)
+
+            print(f"[NativeOverlay] Calling show({x}, {y}, {w}, {h})...")
+            self._view.show(int(x), int(y), int(w), int(h))
+            print("[NativeOverlay] show() completed successfully!")
+            return True
+        except Exception as e:
+            print(f"[NativeOverlay] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def hide(self):
         """隐藏悬浮窗"""
