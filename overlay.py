@@ -41,8 +41,7 @@ class FloatingOverlay(Widget):
         self.icon_size = 20
         self.icon_padding = 10
 
-        # 绑定属性变化触发重绘
-        self.bind(pos=self._update_rect, size=self._update_rect)
+        # 绑定属性变化触发重绘（不绑定 pos/size，避免 Kivy Window _update_childsize 递归）
         self.bind(floating_color=self._update_rect)
         self.bind(floating_alpha=self._update_rect)
 
@@ -67,26 +66,27 @@ class FloatingOverlay(Widget):
         self._update_rect()
 
     def _update_rect(self, *args):
-        """重绘 Canvas"""
+        """重绘 Canvas — uses x_offset/y_offset/float_w/float_h directly,
+        avoids setting self.pos/self.size which triggers Kivy Window recursion."""
         self.canvas.clear()
 
-        # 确保 pos 和 size 正确
-        self.pos = (self.x_offset, self.y_offset)
-        self.size = (self.float_w, self.float_h)
+        # Compute pos/size from our own fields (don't assign to self.pos/self.size)
+        px, py = self.x_offset, self.y_offset
+        pw, ph = self.float_w, self.float_h
 
         with self.canvas:
             # 圆角矩形背景
             Color(*self.floating_color)
             RoundedRectangle(
-                pos=self.pos,
-                size=self.size,
+                pos=(px, py),
+                size=(pw, ph),
                 radius=[15, 15, 15, 15]
             )
 
             # 边框
             Color(0.5, 0.5, 0.5, 0.5 * self.floating_alpha)
             Line(
-                rounded_rectangle=(*self.pos, *self.size, 15),
+                rounded_rectangle=(px, py, pw, ph, 15),
                 width=1
             )
 

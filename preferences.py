@@ -5,6 +5,19 @@
 from kivy.utils import platform
 import constants
 
+
+def _to_signed32(val):
+    """Convert unsigned 32-bit int to signed 32-bit int for Java putInt"""
+    val = val & 0xFFFFFFFF
+    if val >= 0x80000000:
+        val -= 0x100000000
+    return val
+
+
+def _from_signed32(val):
+    """Convert signed 32-bit int from Java getInt back to unsigned"""
+    return val & 0xFFFFFFFF
+
 _prefs = None
 
 
@@ -35,7 +48,7 @@ def save_all_state(x, y, width, height, color, alpha):
     editor.putInt(constants.PREF_KEY_Y, int(y))
     editor.putInt(constants.PREF_KEY_WIDTH, int(width))
     editor.putInt(constants.PREF_KEY_HEIGHT, int(height))
-    editor.putInt(constants.PREF_KEY_COLOR, int(color))
+    editor.putInt(constants.PREF_KEY_COLOR, _to_signed32(color))
     editor.putFloat(constants.PREF_KEY_ALPHA, float(alpha))
     editor.apply()
 
@@ -57,7 +70,7 @@ def load_state():
         'y': prefs.getInt(constants.PREF_KEY_Y, constants.DEFAULT_FLOATING_HEIGHT // 2),
         'width': prefs.getInt(constants.PREF_KEY_WIDTH, constants.DEFAULT_FLOATING_WIDTH),
         'height': prefs.getInt(constants.PREF_KEY_HEIGHT, constants.DEFAULT_FLOATING_HEIGHT),
-        'color': prefs.getInt(constants.PREF_KEY_COLOR, constants.COLOR_TRANSPARENT_GRAY),
+        'color': _from_signed32(prefs.getInt(constants.PREF_KEY_COLOR, constants.COLOR_TRANSPARENT_GRAY)),
         'alpha': prefs.getFloat(constants.PREF_KEY_ALPHA, 1.0),
     }
 
@@ -91,7 +104,7 @@ def save_default_color(color):
     prefs = _get_prefs()
     if prefs is None:
         return
-    prefs.edit().putInt(constants.PREF_KEY_DEFAULT_COLOR, int(color)).apply()
+    prefs.edit().putInt(constants.PREF_KEY_DEFAULT_COLOR, _to_signed32(color)).apply()
 
 
 def get_default_color():
@@ -99,7 +112,7 @@ def get_default_color():
     prefs = _get_prefs()
     if prefs is None:
         return constants.COLOR_TRANSPARENT_GRAY
-    return prefs.getInt(constants.PREF_KEY_DEFAULT_COLOR, constants.COLOR_TRANSPARENT_GRAY)
+    return _from_signed32(prefs.getInt(constants.PREF_KEY_DEFAULT_COLOR, constants.COLOR_TRANSPARENT_GRAY))
 
 
 def save_default_alpha(alpha):

@@ -24,6 +24,7 @@ def request_overlay_permission():
         return
 
     from jnius import autoclass
+    Settings = autoclass('android.provider.Settings')
     Intent = autoclass('android.content.Intent')
     Uri = autoclass('android.net.Uri')
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
@@ -56,13 +57,14 @@ def request_ignore_battery_optimizations():
         return
 
     from jnius import autoclass
+    Settings = autoclass('android.provider.Settings')
     Intent = autoclass('android.content.Intent')
     Uri = autoclass('android.net.Uri')
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
     activity = PythonActivity.mActivity
 
     intent = Intent(
-        android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
         Uri.parse(f"package:{activity.getPackageName()}")
     )
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
