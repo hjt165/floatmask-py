@@ -49,6 +49,7 @@ PREF_KEY_ENABLED = "service_enabled"
 PREF_KEY_EDGE_SNAP = "edge_snap_enabled"
 PREF_KEY_DEFAULT_COLOR = "default_color"
 PREF_KEY_DEFAULT_ALPHA = "default_alpha"
+PREF_KEY_IS_LOCKED = "is_locked"
 
 # 请求码
 REQUEST_CODE_OVERLAY_PERMISSION = 1001

@@ -1,6 +1,7 @@
 package com.floatmask;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -33,13 +34,10 @@ public class OverlayView extends View {
     private int screenWidth = 1080;
     private int screenHeight = 1920;
 
-    // Toolbar
-    private static final int TOOLBAR_HEIGHT = 80;
-    private static final int ICON_SIZE = 56;
-    private static final int ICON_MARGIN = 12;
-    private static final int ICON_TOTAL = ICON_SIZE + ICON_MARGIN * 2;
+    private static final int TOOLBAR_HEIGHT = 120;
+    private static final int ICON_SIZE = 64;
+    private static final int ICON_MARGIN = 16;
 
-    // Touch state (read by Python via Pyjnius)
     public static int touchAction = -1;
     public static float touchX, touchY;
     public static float touchDX, touchDY;
@@ -55,6 +53,8 @@ public class OverlayView extends View {
     private boolean isDragHandle = false;
     private boolean toolbarButtonTapped = false;
     private float slideStartAlpha = 1.0f;
+
+    private static final String PREF_NAME = "floatmask_prefs";
 
     public OverlayView(Context context) {
         super(context);
@@ -89,6 +89,30 @@ public class OverlayView extends View {
         screenHeight = dm.heightPixels;
     }
 
+    private SharedPreferences getPrefs() {
+        return getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    }
+
+    private void saveStateToPrefs() {
+        SharedPreferences.Editor editor = getPrefs().edit();
+        editor.putInt("floating_x", (int) posX);
+        editor.putInt("floating_y", (int) posY);
+        editor.putInt("floating_width", viewWidth);
+        editor.putInt("floating_height", viewHeight);
+        editor.putInt("floating_color", overlayColor);
+        editor.putFloat("floating_alpha", overlayAlpha);
+        editor.putBoolean("service_enabled", false);
+        editor.apply();
+    }
+
+    private void saveLockState() {
+        getPrefs().edit().putBoolean("is_locked", isLocked).apply();
+    }
+
+    private void loadLockState() {
+        isLocked = getPrefs().getBoolean("is_locked", false);
+    }
+
     private void updatePaintColor() {
         int a = (int) ((Color.alpha(overlayColor) / 255.0f) * 255);
         int r = Color.red(overlayColor);
@@ -110,6 +134,8 @@ public class OverlayView extends View {
         posX = x; posY = y;
         viewWidth = w; viewHeight = h;
 
+        loadLockState();
+
         params = new WindowManager.LayoutParams(
             w, h + TOOLBAR_HEIGHT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -126,7 +152,6 @@ public class OverlayView extends View {
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             wm.addView(this, p);
             requestLayout();
-            android.util.Log.e("FloatMask", "addView done, requested layout");
         });
     }
 
@@ -188,61 +213,43 @@ public class OverlayView extends View {
 
         int totalH = viewHeight + TOOLBAR_HEIGHT;
 
-        // Draw toolbar background (top bar)
         toolbarRect.set(0, 0, viewWidth, TOOLBAR_HEIGHT);
         canvas.drawRoundRect(toolbarRect, cornerRadius, cornerRadius, toolbarPaint);
-        // Fill bottom corners of toolbar
         canvas.drawRect(0, cornerRadius, viewWidth, TOOLBAR_HEIGHT, toolbarPaint);
 
-        // Draw overlay body
         rect.set(0, TOOLBAR_HEIGHT, viewWidth, totalH);
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint);
-        // Fill top corners of body to connect with toolbar
         canvas.drawRect(0, TOOLBAR_HEIGHT, viewWidth, TOOLBAR_HEIGHT + cornerRadius, paint);
 
-        // Calculate icon positions
         float cy = TOOLBAR_HEIGHT / 2f;
-        float lockCx = ICON_MARGIN + ICON_SIZE / 2f;
-        float closeCx = viewWidth - ICON_MARGIN - ICON_SIZE / 2f;
+        float lockCx = ICON_MARGIN + ICON_SIZE / 2f + ICON_MARGIN;
+        float closeCx = viewWidth - ICON_MARGIN - ICON_SIZE / 2f - ICON_MARGIN;
         float dragCx = viewWidth / 2f;
 
-        // Lock icon hit area
-        lockRect.set(lockCx - ICON_SIZE / 2f - ICON_MARGIN, 0,
-                     lockCx + ICON_SIZE / 2f + ICON_MARGIN, TOOLBAR_HEIGHT);
+        lockRect.set(0, 0, viewWidth * 0.33f, TOOLBAR_HEIGHT);
+        closeRect.set(viewWidth * 0.67f, 0, viewWidth, TOOLBAR_HEIGHT);
+        dragRect.set(viewWidth * 0.33f, 0, viewWidth * 0.67f, TOOLBAR_HEIGHT);
 
-        // Close icon hit area
-        closeRect.set(closeCx - ICON_SIZE / 2f - ICON_MARGIN, 0,
-                      closeCx + ICON_SIZE / 2f + ICON_MARGIN, TOOLBAR_HEIGHT);
-
-        // Drag handle hit area
-        dragRect.set(dragCx - 30, 0, dragCx + 30, TOOLBAR_HEIGHT);
-
-        // Draw lock icon (left)
         iconPaint.setColor(isLocked ? 0xFFFF6B6B : 0xFF4CAF50);
         iconPaint.setStyle(Paint.Style.STROKE);
         iconPaint.setStrokeWidth(4f);
         float lx = lockCx - 12;
         float ly = cy - 10;
-        // Lock body
         canvas.drawRoundRect(lx - 8, ly + 4, lx + 12, ly + 18, 3, 3, iconPaint);
-        // Lock shackle
         RectF shackle = new RectF(lx - 4, ly - 6, lx + 8, ly + 8);
         canvas.drawArc(shackle, 180, 180, false, iconPaint);
 
-        // Draw drag handle (center) - 3 horizontal lines
         iconPaint.setColor(0xAAFFFFFF);
         iconPaint.setStrokeWidth(3.5f);
         for (int i = -1; i <= 1; i++) {
-            float lineY = cy + i * 10;
-            canvas.drawLine(dragCx - 16, lineY, dragCx + 16, lineY, iconPaint);
+            float lineY = cy + i * 12;
+            canvas.drawLine(dragCx - 18, lineY, dragCx + 18, lineY, iconPaint);
         }
 
-        // Draw close icon (right) - X mark
         iconPaint.setColor(0xFFFF6B6B);
         iconPaint.setStrokeWidth(4f);
-        float cx = closeCx;
-        canvas.drawLine(cx - 12, cy - 12, cx + 12, cy + 12, iconPaint);
-        canvas.drawLine(cx + 12, cy - 12, cx - 12, cy + 12, iconPaint);
+        canvas.drawLine(closeCx - 12, cy - 12, closeCx + 12, cy + 12, iconPaint);
+        canvas.drawLine(closeCx + 12, cy - 12, closeCx - 12, cy + 12, iconPaint);
     }
 
     private boolean isInToolbar(float localY) {
@@ -263,7 +270,6 @@ public class OverlayView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        android.util.Log.e("FloatMask", "onTouchEvent action=" + event.getAction());
         float rawX = event.getRawX();
         float rawY = event.getRawY();
         float localX = rawX - posX;
@@ -280,24 +286,24 @@ public class OverlayView extends View {
                 isDragHandle = false;
                 toolbarButtonTapped = false;
 
-                android.util.Log.i("FloatMask", "ACTION_DOWN rawX=" + rawX + " rawY=" + rawY + " localX=" + localX + " localY=" + localY + " posX=" + posX + " posY=" + posY + " toolbarH=" + TOOLBAR_HEIGHT + " viewW=" + viewWidth);
-
-                // Check toolbar buttons
                 if (isInLockArea(localX, localY)) {
                     isLocked = !isLocked;
+                    saveLockState();
                     postInvalidate();
-                    touchAction = 5; // lock toggle
+                    touchAction = 5;
                     dragging = false;
                     toolbarButtonTapped = true;
-                    android.util.Log.i("FloatMask", "LOCK TOGGLE: isLocked=" + isLocked);
                     return true;
                 }
 
                 if (isInCloseArea(localX, localY)) {
-                    touchAction = 6; // close
+                    touchAction = 6;
                     dragging = false;
                     toolbarButtonTapped = true;
-                    android.util.Log.i("FloatMask", "CLOSE BUTTON TAPPED");
+                    saveStateToPrefs();
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        try { wm.removeView(OverlayView.this); } catch (Exception e) {}
+                    });
                     return true;
                 }
 
@@ -305,7 +311,6 @@ public class OverlayView extends View {
                     isDragHandle = true;
                 }
 
-                // Resize area check (bottom-right corner of body)
                 inResizeArea = !isLocked && !isInToolbar(localY)
                     && localX > viewWidth - 80 && (localY - TOOLBAR_HEIGHT) > viewHeight - 80;
 
@@ -358,7 +363,6 @@ public class OverlayView extends View {
                     touchX = rawX;
                     touchY = rawY;
                 } else if (isDragHandle) {
-                    // Drag handle movement (even when locked)
                     touchDX = rawX - lastRawX;
                     touchDY = rawY - lastRawY;
                     lastRawX = rawX;

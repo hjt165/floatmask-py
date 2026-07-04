@@ -186,13 +186,17 @@ class MainScreen(Screen):
         if self.native_overlay is None:
             return
 
-        x, y = self.native_overlay.get_position()
-        w, h = self.native_overlay.get_size()
-        color = constants.COLORS[self._color_index]
-        preferences.save_all_state(x, y, w, h, color, 1.0)
+        if self.native_overlay.is_alive():
+            x, y = self.native_overlay.get_position()
+            w, h = self.native_overlay.get_size()
+            color = constants.COLORS[self._color_index]
+            preferences.save_all_state(x, y, w, h, color, 1.0)
 
-        self.native_overlay.stop_polling()
-        self.native_overlay.hide()
+            self.native_overlay.stop_polling()
+            self.native_overlay.hide()
+        else:
+            self.native_overlay.stop_polling()
+
         self.native_overlay = None
 
         self._stop_snap_polling()
@@ -295,11 +299,17 @@ class FloatMaskApp(App):
     def build(self):
         self.title = "智能字幕遮挡"
         sm = ScreenManager()
-        sm.add_widget(MainScreen(name='main'))
+        self._main_screen = MainScreen(name='main')
+        sm.add_widget(self._main_screen)
         return sm
 
     def on_pause(self):
         return True
+
+    def on_resume(self):
+        if not preferences.is_service_enabled():
+            self._main_screen.toggle_switch.active = False
+            self._main_screen.native_overlay = None
 
     def on_stop(self):
         pass

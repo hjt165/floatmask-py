@@ -27,6 +27,17 @@ class NativeOverlay:
         self._on_double_tap = None
         self._last_touch_action = -1
 
+    def is_alive(self):
+        """检查Java端的View是否还在"""
+        if self._view is None:
+            return False
+        try:
+            self._view.getPosX()
+            return True
+        except Exception:
+            self._view = None
+            return False
+
     def show(self, x=100, y=100, w=None, h=None, color=None):
         """显示悬浮窗（通过 Clock.schedule_once 确保在主线程执行）"""
         if platform != 'android':
@@ -43,36 +54,25 @@ class NativeOverlay:
 
     def _do_show(self, dt):
         from jnius import autoclass
-        Log = autoclass('android.util.Log')
 
         try:
-            Log.i("FloatMask", "=== _do_show START ===")
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
             activity = PythonActivity.mActivity
-            Log.i("FloatMask", f"Activity: {activity}")
 
             OverlayViewClass = autoclass('com.floatmask.OverlayView')
-            Log.i("FloatMask", f"OverlayViewClass: {OverlayViewClass}")
 
             x, y, w, h, color = self._show_params
-            Log.i("FloatMask", f"Params: x={x} y={y} w={w} h={h} color={color}")
 
             self._view = OverlayViewClass(activity)
-            Log.i("FloatMask", f"View created: {self._view}")
 
             if color is not None:
                 c = _to_signed32(color)
-                Log.i("FloatMask", f"Setting color: {c}")
                 self._view.setColor(c)
 
-            Log.i("FloatMask", f"Calling show({int(x)}, {int(y)}, {int(w)}, {int(h)})")
             self._view.show(int(x), int(y), int(w), int(h))
-            Log.i("FloatMask", "=== _do_show SUCCESS ===")
         except Exception as e:
-            Log.e("FloatMask", f"ERROR in _do_show: {e}")
             import traceback
-            tb = traceback.format_exc()
-            Log.e("FloatMask", tb)
+            traceback.print_exc()
 
     def hide(self):
         """隐藏悬浮窗"""
@@ -142,6 +142,13 @@ class NativeOverlay:
         if self._view is None:
             return
 
+        if not self.is_alive():
+            self._view = None
+            if self._poll_event:
+                self._poll_event.cancel()
+                self._poll_event = None
+            return
+
         from jnius import autoclass
         OverlayView = autoclass('com.floatmask.OverlayView')
 
@@ -150,9 +157,6 @@ class NativeOverlay:
             return
 
         self._last_touch_action = action
-
-        Log = autoclass('android.util.Log')
-        Log.i("FloatMask", f"Poll touch: action={action}")
 
         if action == 2:
             OverlayView.touchAction = -1
@@ -168,15 +172,17 @@ class NativeOverlay:
             self._last_touch_action = -1
 
         elif action == 5:
-            # Lock toggle from toolbar button
             OverlayView.touchAction = -1
             self._last_touch_action = -1
             if self._on_lock_change:
                 self._on_lock_change()
 
         elif action == 6:
-            # Close from toolbar button
             OverlayView.touchAction = -1
             self._last_touch_action = -1
+            self._view = None
+            if self._poll_event:
+                self._poll_event.cancel()
+                self._poll_event = None
             if self._on_close:
                 self._on_close()
