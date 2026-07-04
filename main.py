@@ -116,6 +116,13 @@ class MainScreen(Screen):
         self._snap_event = None
 
         Clock.schedule_once(self._check_permissions, 0.5)
+        Clock.schedule_once(self._auto_start_check, 1.0)
+
+    def _auto_start_check(self, dt):
+        if platform == 'android':
+            import os
+            if os.environ.get('FLOATMASK_AUTOSTART', '') == '1':
+                self.toggle_switch.active = True
 
     def _check_permissions(self, dt):
         if platform == 'android':
