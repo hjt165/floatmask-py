@@ -42,22 +42,37 @@ class NativeOverlay:
         return True
 
     def _do_show(self, dt):
-        try:
-            from jnius import autoclass
+        from jnius import autoclass
+        Log = autoclass('android.util.Log')
 
+        try:
+            Log.i("FloatMask", "=== _do_show START ===")
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
             activity = PythonActivity.mActivity
+            Log.i("FloatMask", f"Activity: {activity}")
+
             OverlayViewClass = autoclass('com.floatmask.OverlayView')
+            Log.i("FloatMask", f"OverlayViewClass: {OverlayViewClass}")
 
             x, y, w, h, color = self._show_params
+            Log.i("FloatMask", f"Params: x={x} y={y} w={w} h={h} color={color}")
+
             self._view = OverlayViewClass(activity)
+            Log.i("FloatMask", f"View created: {self._view}")
+
             if color is not None:
-                self._view.setColor(_to_signed32(color))
+                c = _to_signed32(color)
+                Log.i("FloatMask", f"Setting color: {c}")
+                self._view.setColor(c)
+
+            Log.i("FloatMask", f"Calling show({int(x)}, {int(y)}, {int(w)}, {int(h)})")
             self._view.show(int(x), int(y), int(w), int(h))
+            Log.i("FloatMask", "=== _do_show SUCCESS ===")
         except Exception as e:
-            print(f"[NativeOverlay] ERROR in _do_show: {e}")
+            Log.e("FloatMask", f"ERROR in _do_show: {e}")
             import traceback
-            traceback.print_exc()
+            tb = traceback.format_exc()
+            Log.e("FloatMask", tb)
 
     def hide(self):
         """隐藏悬浮窗"""

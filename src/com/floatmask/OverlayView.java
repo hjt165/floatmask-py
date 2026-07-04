@@ -85,25 +85,34 @@ public class OverlayView extends View {
         params.x = x;
         params.y = y;
 
-        wm.addView(this, params);
+        final WindowManager.LayoutParams p = params;
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            wm.addView(this, p);
+        });
     }
 
     public void hide() {
-        try { wm.removeView(this); } catch (Exception e) {}
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            try { wm.removeView(this); } catch (Exception e) {}
+        });
     }
 
     public void moveTo(float x, float y) {
         posX = x; posY = y;
         params.x = (int) x;
         params.y = (int) y;
-        try { wm.updateViewLayout(this, params); } catch (Exception e) {}
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            try { wm.updateViewLayout(this, params); } catch (Exception e) {}
+        });
     }
 
     public void resizeTo(int w, int h) {
         viewWidth = w; viewHeight = h;
         params.width = w;
         params.height = h;
-        try { wm.updateViewLayout(this, params); } catch (Exception e) {}
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            try { wm.updateViewLayout(this, params); } catch (Exception e) {}
+        });
     }
 
     public void setColor(int color) {
