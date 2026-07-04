@@ -34,9 +34,9 @@ public class OverlayView extends View {
     private int screenHeight = 1920;
 
     // Toolbar
-    private static final int TOOLBAR_HEIGHT = 48;
-    private static final int ICON_SIZE = 32;
-    private static final int ICON_MARGIN = 8;
+    private static final int TOOLBAR_HEIGHT = 80;
+    private static final int ICON_SIZE = 56;
+    private static final int ICON_MARGIN = 12;
     private static final int ICON_TOTAL = ICON_SIZE + ICON_MARGIN * 2;
 
     // Touch state (read by Python via Pyjnius)
@@ -53,6 +53,7 @@ public class OverlayView extends View {
     private boolean dragging = false;
     private boolean isSlide = false;
     private boolean isDragHandle = false;
+    private boolean toolbarButtonTapped = false;
     private float slideStartAlpha = 1.0f;
 
     public OverlayView(Context context) {
@@ -216,29 +217,30 @@ public class OverlayView extends View {
 
         // Draw lock icon (left)
         iconPaint.setColor(isLocked ? 0xFFFF6B6B : 0xFF4CAF50);
-        float lx = lockCx - 8;
-        float ly = cy - 6;
-        // Lock body
-        canvas.drawRoundRect(lx - 6, ly, lx + 10, ly + 12, 2, 2, iconPaint);
-        // Lock shackle
         iconPaint.setStyle(Paint.Style.STROKE);
-        RectF shackle = new RectF(lx - 3, ly - 8, lx + 7, ly + 2);
+        iconPaint.setStrokeWidth(4f);
+        float lx = lockCx - 12;
+        float ly = cy - 10;
+        // Lock body
+        canvas.drawRoundRect(lx - 8, ly + 4, lx + 12, ly + 18, 3, 3, iconPaint);
+        // Lock shackle
+        RectF shackle = new RectF(lx - 4, ly - 6, lx + 8, ly + 8);
         canvas.drawArc(shackle, 180, 180, false, iconPaint);
 
         // Draw drag handle (center) - 3 horizontal lines
         iconPaint.setColor(0xAAFFFFFF);
-        iconPaint.setStrokeWidth(2.5f);
+        iconPaint.setStrokeWidth(3.5f);
         for (int i = -1; i <= 1; i++) {
-            float lineY = cy + i * 7;
-            canvas.drawLine(dragCx - 10, lineY, dragCx + 10, lineY, iconPaint);
+            float lineY = cy + i * 10;
+            canvas.drawLine(dragCx - 16, lineY, dragCx + 16, lineY, iconPaint);
         }
 
         // Draw close icon (right) - X mark
         iconPaint.setColor(0xFFFF6B6B);
-        iconPaint.setStrokeWidth(3f);
+        iconPaint.setStrokeWidth(4f);
         float cx = closeCx;
-        canvas.drawLine(cx - 8, cy - 8, cx + 8, cy + 8, iconPaint);
-        canvas.drawLine(cx + 8, cy - 8, cx - 8, cy + 8, iconPaint);
+        canvas.drawLine(cx - 12, cy - 12, cx + 12, cy + 12, iconPaint);
+        canvas.drawLine(cx + 12, cy - 12, cx - 12, cy + 12, iconPaint);
     }
 
     private boolean isInToolbar(float localY) {
@@ -246,11 +248,11 @@ public class OverlayView extends View {
     }
 
     private boolean isInLockArea(float localX, float localY) {
-        return isInToolbar(localY) && localX < ICON_TOTAL + ICON_SIZE;
+        return isInToolbar(localY) && localX < viewWidth * 0.33f;
     }
 
     private boolean isInCloseArea(float localX, float localY) {
-        return isInToolbar(localY) && localX > viewWidth - ICON_TOTAL - ICON_SIZE;
+        return isInToolbar(localY) && localX > viewWidth * 0.67f;
     }
 
     private boolean isInDragArea(float localX, float localY) {
@@ -273,6 +275,7 @@ public class OverlayView extends View {
                 dragging = true;
                 isSlide = false;
                 isDragHandle = false;
+                toolbarButtonTapped = false;
 
                 // Check toolbar buttons
                 if (isInLockArea(localX, localY)) {
@@ -280,12 +283,14 @@ public class OverlayView extends View {
                     postInvalidate();
                     touchAction = 5; // lock toggle
                     dragging = false;
+                    toolbarButtonTapped = true;
                     return true;
                 }
 
                 if (isInCloseArea(localX, localY)) {
                     touchAction = 6; // close
                     dragging = false;
+                    toolbarButtonTapped = true;
                     return true;
                 }
 
@@ -359,6 +364,11 @@ public class OverlayView extends View {
             case MotionEvent.ACTION_UP:
                 dragging = false;
                 isDragHandle = false;
+
+                if (toolbarButtonTapped) {
+                    toolbarButtonTapped = false;
+                    return true;
+                }
 
                 if (isSlide) {
                     touchAction = 4;
